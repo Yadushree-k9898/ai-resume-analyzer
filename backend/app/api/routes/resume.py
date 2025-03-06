@@ -1,62 +1,80 @@
-# from fastapi import APIRouter, UploadFile, File, HTTPException
-# from app.api.routes import auth, resume
-
-# import fitz  # PyMuPDF for PDF parsing
+# import re
+# import fitz
 # import docx2txt
+# import io
+# from fastapi import UploadFile, HTTPException, APIRouter, File
 
 # router = APIRouter()
 
-# def extract_text(file: UploadFile):
-#     if file.filename.endswith(".pdf"):
-#         doc = fitz.open(stream=file.file.read(), filetype="pdf")
-#         text = "\n".join([page.get_text("text") for page in doc])
-#     elif file.filename.endswith(".docx"):
-#         text = docx2txt.process(file.file)
-#     else:
-#         raise HTTPException(status_code=400, detail="Unsupported file format")
-#     return text
-
 # @router.post("/upload")
 # async def upload_resume(file: UploadFile = File(...)):
-#     text = extract_text(file)
-#     return {"message": "Resume processed", "extracted_text": text}
+#     """
+#     Endpoint to upload a resume file (PDF or DOCX) and extract its text.
+#     """
+#     try:
+#         filename = file.filename.lower()
+#         if not filename.endswith((".pdf", ".docx")):
+#             raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a PDF or DOCX file.")
+
+#         file_content = await file.read()
+
+#         if filename.endswith(".pdf"):
+#             with fitz.open(stream=io.BytesIO(file_content), filetype="pdf") as doc:
+#                 text = "\n".join([page.get_text("text") for page in doc])
+#         else:
+#             text = docx2txt.process(io.BytesIO(file_content))
+
+#         if not text.strip():
+#             raise HTTPException(status_code=400, detail="No readable text found. Please upload a valid resume.")
+
+#         # Cleaning extracted text
+#         text = text.encode("utf-8", "ignore").decode("utf-8")  # Remove invalid characters
+#         text = re.sub(r"[^\x20-\x7E]", " ", text)  # Remove non-printable ASCII characters
+#         text = re.sub(r"\s+", " ", text).strip()  # Normalize spaces and new lines
+
+#         return {"filename": file.filename, "extracted_text": text[:500]}  # Limiting response size for preview
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
 
 
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from app.core.auth import get_current_user
-import fitz  # PyMuPDF for PDF parsing
+import re
+import fitz
 import docx2txt
 import io
+from fastapi import UploadFile, HTTPException, APIRouter, File
 
 router = APIRouter()
 
-def extract_text(file: UploadFile):
-    try:
-        file_content = file.file.read()  # Read the file into memory
-        if file.filename.endswith(".pdf"):
-            doc = fitz.open(stream=io.BytesIO(file_content), filetype="pdf")
-            text = "\n".join([page.get_text("text") for page in doc])
-        elif file.filename.endswith(".docx"):
-            text = docx2txt.process(io.BytesIO(file_content))
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file format")
-        
-        if not text.strip():  # Check if text is empty
-            raise HTTPException(status_code=400, detail="No text extracted. Please upload a valid resume.")
-
-        return text
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
+def clean_text(text: str) -> str:
+    text = text.encode("utf-8", "ignore").decode("utf-8")  # Remove invalid characters
+    text = re.sub(r"[^\\x20-\\x7E]", " ", text)  # Remove non-printable ASCII characters
+    text = re.sub(r"\\s+", " ", text).strip()  # Normalize spaces and new lines
+    return text
 
 @router.post("/upload")
-async def upload_resume(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)  # Ensure user authentication
-):
-    text = extract_text(file)
-    return {
-        "message": "Resume processed successfully",
-        "extracted_text": text,
-        "uploaded_by": current_user["email"],  # Return user info
-    }
+async def upload_resume(file: UploadFile = File(...)):
+    """
+    Endpoint to upload a resume file (PDF or DOCX) and extract its text.
+    """
+    try:
+        filename = file.filename.lower()
+        if not filename.endswith((".pdf", ".docx")):
+            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a PDF or DOCX file.")
+
+        file_content = await file.read()
+        
+        if filename.endswith(".pdf"):
+            with fitz.open(stream=io.BytesIO(file_content), filetype="pdf") as doc:
+                text = "\n".join([page.get_text("text") for page in doc])
+        else:
+            text = docx2txt.process(io.BytesIO(file_content))
+
+        text = clean_text(text)
+        if not text:
+            raise HTTPException(status_code=400, detail="No readable text found. Please upload a valid resume.")
+
+        return {"filename": file.filename, "extracted_text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing resume: {str(e)}")
