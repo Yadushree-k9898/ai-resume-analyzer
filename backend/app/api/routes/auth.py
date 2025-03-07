@@ -14,7 +14,9 @@ router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# ✅ User Create Schema
+ACCESS_TOKEN_EXPIRE_HOURS = 1
+
+# ✅ User Schemas
 class UserCreate(BaseModel):
     full_name: str
     email: EmailStr
@@ -41,14 +43,10 @@ class UserCreate(BaseModel):
             raise ValueError("Phone number must be in a valid format")
         return v
 
-
-# ✅ Separate Schema for Login (Fix)
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-
-# ✅ Update Schema
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: str | None = None
@@ -63,9 +61,6 @@ class UserUpdate(BaseModel):
     linkedin_url: str | None = None
     portfolio_url: str | None = None
 
-
-ACCESS_TOKEN_EXPIRE_HOURS = 1
-
 # ✅ Register Route
 @router.post("/register/", status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -74,27 +69,13 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_password = hash_password(user.password)
-    db_user = User(
-        full_name=user.full_name,
-        email=user.email,
-        hashed_password=hashed_password,
-        phone_number=user.phone_number,
-        username=user.username,
-        job_title=user.job_title,
-        industry=user.industry,
-        skills=user.skills,
-        experience_level=user.experience_level,
-        location=user.location,
-        linkedin_url=user.linkedin_url,
-        portfolio_url=user.portfolio_url,
-        role="user"  # Default role
-    )
+    db_user = User(**user.dict(exclude={"password"}), hashed_password=hashed_password, role="user")
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return {"message": "User registered successfully"}
 
-# ✅ Login Route (Fix)
+# ✅ Login Route
 @router.post("/login/")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -107,42 +88,36 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# ✅ Get Current User (Fix)
+# ✅ Get Current User
 @router.get("/me/")
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     user_data = verify_token(token)
     if not user_data["valid"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=user_data["message"])
 
-    user_email = user_data["payload"].get("sub")
-    db_user = db.query(User).filter(User.email == user_email).first()
+    db_user = db.query(User).filter(User.email == user_data["payload"].get("sub")).first()
     if not db_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    return {"id": db_user.id, "email": db_user.email, "full_name": db_user.full_name}
+    return db_user
 
-# ✅ Get All Users (Fix Admin Check)
+# ✅ Get All Users (Admin Only)
 @router.get("/users/")
 def get_all_users(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     user_data = verify_token(token)
-    if not user_data["valid"]:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=user_data["message"])
-    
-    if user_data["payload"].get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not authorized to access this resource")
+    if not user_data["valid"] or user_data["payload"].get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    users = db.query(User).all()
-    return [{"id": user.id, "email": user.email, "full_name": user.full_name} for user in users]
+    return db.query(User).all()
 
-# ✅ Update User (Fix)
+# ✅ Update User
 @router.put("/update/")
 def update_user(user_update: UserUpdate, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     user_data = verify_token(token)
     if not user_data["valid"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=user_data["message"])
 
-    user_email = user_data["payload"].get("sub")
-    db_user = db.query(User).filter(User.email == user_email).first()
+    db_user = db.query(User).filter(User.email == user_data["payload"].get("sub")).first()
     if not db_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -153,18 +128,16 @@ def update_user(user_update: UserUpdate, db: Session = Depends(get_db), token: s
         db_user.hashed_password = hash_password(user_update.password)
 
     db.commit()
-    db.refresh(db_user)
     return {"message": "User updated successfully"}
 
-# ✅ Delete User (Fix)
+# ✅ Delete User
 @router.delete("/delete/")
 def delete_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     user_data = verify_token(token)
     if not user_data["valid"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=user_data["message"])
 
-    user_email = user_data["payload"].get("sub")
-    db_user = db.query(User).filter(User.email == user_email).first()
+    db_user = db.query(User).filter(User.email == user_data["payload"].get("sub")).first()
     if not db_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 

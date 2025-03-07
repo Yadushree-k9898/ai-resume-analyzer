@@ -1,13 +1,10 @@
-from fastapi import APIRouter, Form
-from textblob import TextBlob
 import spacy
-
-router = APIRouter()
+from textblob import TextBlob
 
 nlp = spacy.load("en_core_web_sm")
 
 def analyze_resume_quality(text: str):
-    """Analyze resume quality based on structure, clarity, and readability."""
+    """Analyze resume quality based on structure, clarity, and keyword density."""
     doc = nlp(text)
 
     # Check for key resume sections
@@ -22,14 +19,6 @@ def analyze_resume_quality(text: str):
     score += 30 if has_experience else 0
     score += 30 if has_education else 0
     score += 20 if has_skills else 0
-    score += int(readability * 20)  
+    score += int(readability * 20)  # Convert polarity to score
 
-    return {
-        "resume_score": score,
-        "suggestions": "Add missing sections to improve." if score < 80 else "Resume looks good!"
-    }
-
-@router.post("/analyze")
-async def get_resume_score(resume_text: str = Form(...)):
-    """Analyze resume text and return a score."""
-    return analyze_resume_quality(resume_text)
+    return {"resume_score": score, "suggestions": "Add missing sections to improve." if score < 80 else "Resume looks good!"}
