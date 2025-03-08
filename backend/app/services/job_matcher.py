@@ -1,15 +1,51 @@
-from fuzzywuzzy import fuzz
-from .resume_analyzer import analyze_resume_quality
 
-def match_job_with_resume(resume_text: str, job_description: str):
-    """Match resume skills with job requirements and calculate a match percentage."""
-    resume_analysis = analyze_resume_quality(resume_text)
-    match_score = fuzz.token_set_ratio(resume_text, job_description)
+# import json
 
-    recommendations = (
-        "Consider improving your resume with better keywords."
-        if match_score < 50
-        else "You are a strong match!"
-    )
+# job_database = [
+#     {"title": "Software Engineer", "skills": ["Python", "Django", "SQL", "JavaScript"]},
+#     {"title": "Frontend Developer", "skills": ["React.js", "JavaScript", "CSS", "HTML"]},
+#     {"title": "Data Analyst", "skills": ["SQL", "Python", "Pandas", "Excel"]}
+# ]
 
-    return {"match_score": match_score, "recommendations": recommendations}
+# def match_jobs(resume_skills):
+#     """Finds jobs based on skills."""
+#     matched_jobs = []
+    
+#     for job in job_database:
+#         matched_skills = set(resume_skills) & set(job["skills"])
+#         if matched_skills:
+#             matched_jobs.append({
+#                 "title": job["title"],
+#                 "matched_skills": list(matched_skills),
+#                 "missing_skills": list(set(job["skills"]) - matched_skills)
+#             })
+    
+#     return matched_jobs
+import json
+
+job_database = [
+    {"title": "Software Engineer", "skills": ["Python", "Django", "SQL", "JavaScript"]},
+    {"title": "Frontend Developer", "skills": ["React.js", "JavaScript", "CSS", "HTML"]},
+    {"title": "Data Analyst", "skills": ["SQL", "Python", "Pandas", "Excel"]}
+]
+
+def match_jobs(resume_skills):
+    """Matches jobs based on extracted skills."""
+    matched_jobs = []
+
+    if not resume_skills:
+        return matched_jobs  # No skills, no jobs matched
+
+    for job in job_database:
+        matched_skills = set(resume_skills) & set(job["skills"])
+        missing_skills = list(set(job["skills"]) - matched_skills)
+
+        if matched_skills:  # Only add jobs with at least 1 matched skill
+            matched_jobs.append({
+                "title": job["title"],
+                "matched_skills": list(matched_skills),
+                "missing_skills": missing_skills
+            })
+
+    return matched_jobs
+
