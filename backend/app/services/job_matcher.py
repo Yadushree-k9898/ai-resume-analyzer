@@ -1,26 +1,3 @@
-
-# import json
-
-# job_database = [
-#     {"title": "Software Engineer", "skills": ["Python", "Django", "SQL", "JavaScript"]},
-#     {"title": "Frontend Developer", "skills": ["React.js", "JavaScript", "CSS", "HTML"]},
-#     {"title": "Data Analyst", "skills": ["SQL", "Python", "Pandas", "Excel"]}
-# ]
-
-# def match_jobs(resume_skills):
-#     """Finds jobs based on skills."""
-#     matched_jobs = []
-    
-#     for job in job_database:
-#         matched_skills = set(resume_skills) & set(job["skills"])
-#         if matched_skills:
-#             matched_jobs.append({
-#                 "title": job["title"],
-#                 "matched_skills": list(matched_skills),
-#                 "missing_skills": list(set(job["skills"]) - matched_skills)
-#             })
-    
-#     return matched_jobs
 import json
 
 job_database = [

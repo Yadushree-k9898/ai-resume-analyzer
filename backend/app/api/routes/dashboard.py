@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.resume import Resume
 from app.models.user import User
-from app.api.routes.scoring import calculate_resume_score
+from app.api.routes.scoring import get_resume_score
 from app.api.routes.jobs import get_jobs
 from app.api.routes.skills import analyze_skills
 from app.api.routes.auth import get_current_user
@@ -60,8 +60,12 @@ async def get_dashboard(
             logger.debug(f"Extracted Text (first 100 chars): {extracted_text[:100]}")
 
             # ✅ Fetch Resume Score (Ensure required job_requirements parameter is passed)
-            job_requirements = {"skills": [], "experience": 0}  # Default values
-            score_data = calculate_resume_score({"skills": [], "experience": 0}, job_requirements)
+            job_requirements = {"skills": ["python", "react", "sql"], "experience": 3}  # Example job requirements
+            try:
+                score_data = await get_resume_score(job_requirements, extracted_text)  # Ensure async call if needed
+            except Exception as e:
+                logger.error(f"Error fetching score for Resume ID {resume.id}: {e}")
+                score_data = {}
 
             if isinstance(score_data, dict):  
                 score = score_data.get("overall_score", 0)
@@ -74,7 +78,7 @@ async def get_dashboard(
 
             # ✅ Fetch Job Matches with Error Handling
             try:
-                job_matches = get_jobs(extracted_text) or ["No suitable jobs found"]
+                job_matches = await get_jobs(extracted_text) or ["No suitable jobs found"]
             except Exception as e:
                 logger.error(f"Error fetching job matches for Resume ID {resume.id}: {e}")
                 job_matches = ["Error fetching job matches"]
@@ -108,5 +112,6 @@ async def get_dashboard(
 
     return {
         "dashboard": dashboard_data,
-        "total_resumes": len(dashboard_data)
+        "total_resumes": len(dashboard_data),
+        "message": "Dashboard fetched successfully" if dashboard_data else "No resumes processed"
     }
