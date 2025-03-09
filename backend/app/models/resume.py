@@ -15,5 +15,5 @@ class Resume(Base):
     improvement_suggestions = Column(Text, nullable=True)  # Resume improvement feedback
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationship with User
+
     user = relationship("User", back_populates="resumes", lazy="select")
