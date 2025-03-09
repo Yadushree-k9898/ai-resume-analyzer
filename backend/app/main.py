@@ -3,7 +3,7 @@ import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import auth, resume, scoring, jobs, dashboard  
+from app.api.routes import auth, resume, scoring, jobs, job_application, dashboard  
 from app.core.database import Base, engine
 
 # ✅ Load environment variables
@@ -53,11 +53,12 @@ def startup_event():
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
 
-# Register API routers
+# ✅ Register API routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(resume.router, prefix="/resumes", tags=["Resume Upload"])
 app.include_router(scoring.router, prefix="/scoring", tags=["Resume Scoring"])
-app.include_router(jobs.router, prefix="/jobs", tags=["Job Matching"])
+app.include_router(jobs.router, prefix="/api", tags=["Job Matching"])
+app.include_router(job_application.router, prefix="/api/job_applications", tags=["Job Applications"])
 app.include_router(dashboard.router, tags=["Dashboard"])  
 
 @app.get("/")
