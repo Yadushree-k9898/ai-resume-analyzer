@@ -4,9 +4,9 @@ from app.core.database import get_db
 from app.models.job_application import JobApplication
 from app.models.job import Job
 from app.api.routes.auth import get_current_user
-import urllib.parse  # ✅ Added to decode job ID
+import urllib.parse
 
-router = APIRouter(prefix="/api/job_applications", tags=["Job Applications"])
+router = APIRouter(tags=["Job Applications"])
 
 @router.post("/apply/{job_id}", status_code=201)
 def apply_for_job(job_id: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -16,12 +16,15 @@ def apply_for_job(job_id: str, db: Session = Depends(get_db), current_user: dict
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    user_id = current_user.get("id")
+    user_id = current_user.id
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
-    # ✅ Decode job_id (fix for URL encoding issues)
-    job_id = urllib.parse.unquote(job_id)
+    # ✅ Decode and convert job_id to an integer
+    try:
+        job_id = int(urllib.parse.unquote(job_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
 
     # ✅ Check if job exists
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -52,26 +55,31 @@ def get_applied_jobs(db: Session = Depends(get_db), current_user: dict = Depends
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    user_id = current_user.get("id")
+    user_id = current_user.id
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
 
-    applications = db.query(JobApplication).filter(JobApplication.user_id == user_id).all()
+    # ✅ Optimized query using join()
+    applications = (
+        db.query(JobApplication, Job)
+        .join(Job, JobApplication.job_id == Job.id)
+        .filter(JobApplication.user_id == user_id)
+        .all()
+    )
 
     if not applications:
         return {"message": "No job applications found"}
 
-    applied_jobs = []
-    for app in applications:
-        job = db.query(Job).filter(Job.id == app.job_id).first()
-        if job:
-            applied_jobs.append({
-                "job_id": str(job.id),
-                "title": job.title,
-                "description": job.description,
-                "skills_required": job.skills_required,
-                "status": app.status,
-                "applied_at": app.applied_at
-            })
+    applied_jobs = [
+        {
+            "job_id": str(job.id),
+            "title": job.title,
+            "description": job.description,
+            "skills_required": job.skills_required,
+            "status": application.status,
+            "applied_at": application.applied_at
+        }
+        for application, job in applications if job  # ✅ Avoid issues if job is deleted
+    ]
 
     return {"applied_jobs": applied_jobs}
