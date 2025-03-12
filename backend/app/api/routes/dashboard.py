@@ -1,237 +1,137 @@
-# from fastapi import APIRouter, Depends, HTTPException
-# from sqlalchemy.orm import Session, joinedload
-# from app.core.database import get_db
-# from app.models.resume import Resume
-# from app.models.user import User
-# from app.api.routes.scoring import get_resume_score
-# from app.api.routes.jobs import get_jobs
-# from app.api.routes.skills import analyze_skills
-# from app.api.routes.auth import get_current_user
-# import logging
-# from typing import Dict, Any, List
-
-# router = APIRouter()
-# logger = logging.getLogger(__name__)
-
-# @router.get("/dashboard")
-# async def get_dashboard(
-#     current_user: User = Depends(get_current_user), 
-#     db: Session = Depends(get_db)
-# ) -> Dict[str, Any]:
-#     """
-#     Fetches the user's dashboard with resume scores, job matches, and skill gaps.
-#     """
-
-#     if not current_user:
-#         logger.error("Authentication failed: No user found")
-#         raise HTTPException(status_code=401, detail="User authentication failed")
-
-#     user_id = current_user.id
-#     logger.info(f"Fetching dashboard for User ID: {user_id}")
-
-#     # Fetch resumes
-#     resumes = (
-#         db.query(Resume)
-#         .filter(Resume.user_id == user_id)
-#         .options(joinedload(Resume.user))
-#         .all()
-#     )
-
-#     if not resumes:
-#         logger.warning(f"No resumes found for User ID {user_id}")
-#         return {
-#             "dashboard": [],
-#             "total_resumes": 0,
-#             "message": "No resumes found. Upload a resume to get insights."
-#         }
-
-#     dashboard_data = []
-
-#     for resume in resumes:
-#         try:
-#             logger.info(f"Processing Resume ID: {resume.id}")
-
-#             # Ensure extracted_text exists and is a valid string
-#             if not resume.extracted_text or not isinstance(resume.extracted_text, str):
-#                 logger.warning(f"Skipping Resume ID {resume.id}: Missing or invalid extracted_text")
-#                 continue  
-
-#             extracted_text = resume.extracted_text.strip()
-#             logger.debug(f"Extracted Text (first 100 chars): {extracted_text[:100]}")
-
-#             # ✅ Fetch Resume Score (Ensure required job_requirements parameter is passed)
-#             job_requirements = {"skills": ["python", "react", "sql"], "experience": 3}  # Example job requirements
-#             try:
-#                 score_data = await get_resume_score(job_requirements, extracted_text)  # Ensure async call if needed
-#             except Exception as e:
-#                 logger.error(f"Error fetching score for Resume ID {resume.id}: {e}")
-#                 score_data = {}
-
-#             if isinstance(score_data, dict):  
-#                 score = score_data.get("overall_score", 0)
-#                 suggestions = score_data.get("missing_skills", [])
-#             else:
-#                 score, suggestions = 0, ["Error calculating score"]
-
-#             if not isinstance(suggestions, list):
-#                 suggestions = [suggestions] if suggestions else ["No suggestions available"]
-
-#             # ✅ Fetch Job Matches with Error Handling
-#             try:
-#                 job_matches = await get_jobs(extracted_text) or ["No suitable jobs found"]
-#             except Exception as e:
-#                 logger.error(f"Error fetching job matches for Resume ID {resume.id}: {e}")
-#                 job_matches = ["Error fetching job matches"]
-
-#             # ✅ Analyze Skills with Error Handling
-#             try:
-#                 skills_analysis = await analyze_skills(extracted_text)  # ✅ Await properly
-#                 resume_skills = skills_analysis.get("resume_skills", [])
-#                 missing_skills = skills_analysis.get("missing_skills", [])
-#             except Exception as e:
-#                 logger.error(f"Error analyzing skills for Resume ID {resume.id}: {e}")
-#                 resume_skills, missing_skills = [], ["Error analyzing skills"]
-
-#             # ✅ Resume Summary (Limit to 500 characters)
-#             resume_summary = extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text
-
-#             dashboard_data.append({
-#                 "resume_id": resume.id,
-#                 "uploaded_at": resume.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-#                 "score": score,
-#                 "suggestions": suggestions,
-#                 "job_matches": job_matches,
-#                 "resume_skills": resume_skills,
-#                 "missing_skills": missing_skills,
-#                 "resume_summary": resume_summary
-#             })
-
-#         except Exception as e:
-#             logger.error(f"Error processing Resume ID {resume.id}: {e}", exc_info=True)
-#             continue  # Skip this resume instead of failing the entire response
-
-#     return {
-#         "dashboard": dashboard_data,
-#         "total_resumes": len(dashboard_data),
-#         "message": "Dashboard fetched successfully" if dashboard_data else "No resumes processed"
-#     }
-
-
-
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
-from app.core.database import get_db
-from app.models.resume import Resume
+from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import Dict, Any
+
+from app.models.dashboard import Dashboard
 from app.models.user import User
-from app.api.routes.scoring import get_resume_score
-from app.api.routes.jobs import get_jobs
-from app.api.routes.skills import analyze_skills
+from app.models.resume import Resume
+from app.models.job_application import JobApplication
+from app.core.database import get_db
 from app.api.routes.auth import get_current_user
-import logging
-from typing import Dict, Any, List
+from sqlalchemy.sql import func
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
-@router.get("/dashboard")
+# -----------------------------------------------
+# 📌 Get Dashboard Data
+# -----------------------------------------------
+@router.get("/dashboard", response_model=Dict[str, Any])
 async def get_dashboard(
-    current_user: User = Depends(get_current_user), 
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Fetches the user's dashboard with resume scores, job matches, and skill gaps.
-    """
+):
+    """Fetch the user's dashboard data."""
 
     if not current_user:
-        logger.error("Authentication failed: No user found")
-        raise HTTPException(status_code=401, detail="User authentication failed")
+        raise HTTPException(status_code=401, detail="Unauthorized user")
 
-    user_id = current_user.id
-    logger.info(f"Fetching dashboard for User ID: {user_id}")
+    # Fetch dashboard entry
+    dashboard = db.query(Dashboard).filter(Dashboard.user_id == current_user.id).first()
 
-    # Fetch resumes
-    resumes = (
-        db.query(Resume)
-        .filter(Resume.user_id == user_id)
-        .options(joinedload(Resume.user))
-        .all()
-    )
-
-    if not resumes:
-        logger.warning(f"No resumes found for User ID {user_id}")
+    if not dashboard:
         return {
-            "dashboard": [],
-            "total_resumes": 0,
-            "message": "No resumes found. Upload a resume to get insights."
+            "dashboard": None,
+            "message": "No dashboard data available. Upload a resume or apply for jobs."
         }
 
-    dashboard_data = []
-
-    for resume in resumes:
-        try:
-            logger.info(f"Processing Resume ID: {resume.id}")
-
-            # Ensure extracted_text exists and is a valid string
-            if not resume.extracted_text or not isinstance(resume.extracted_text, str):
-                logger.warning(f"Skipping Resume ID {resume.id}: Missing or invalid extracted_text")
-                continue  
-
-            extracted_text = resume.extracted_text.strip()
-            logger.debug(f"Extracted Text (first 100 chars): {extracted_text[:100]}")
-
-            # ✅ Fetch Resume Score (Ensure required job_requirements parameter is passed)
-            job_requirements = {"skills": ["python", "react", "sql"], "experience": 3}  # Example job requirements
-            try:
-                score_data = await get_resume_score(job_requirements, extracted_text)  # Ensure async call if needed
-            except Exception as e:
-                logger.error(f"Error fetching score for Resume ID {resume.id}: {e}")
-                score_data = {}
-
-            if isinstance(score_data, dict):  
-                score = score_data.get("overall_score", 0)
-                suggestions = score_data.get("missing_skills", [])
-            else:
-                score, suggestions = 0, ["Error calculating score"]
-
-            if not isinstance(suggestions, list):
-                suggestions = [suggestions] if suggestions else ["No suggestions available"]
-
-            # ✅ Fetch Job Matches with Error Handling
-            try:
-                job_matches = await get_jobs(extracted_text) or ["No suitable jobs found"]
-            except Exception as e:
-                logger.error(f"Error fetching job matches for Resume ID {resume.id}: {e}")
-                job_matches = ["Error fetching job matches"]
-
-            # ✅ Analyze Skills with Error Handling
-            try:
-                skills_analysis = await analyze_skills(extracted_text)  # ✅ Await properly
-                resume_skills = skills_analysis.get("resume_skills", [])
-                missing_skills = skills_analysis.get("missing_skills", [])
-            except Exception as e:
-                logger.error(f"Error analyzing skills for Resume ID {resume.id}: {e}")
-                resume_skills, missing_skills = [], ["Error analyzing skills"]
-
-            # ✅ Resume Summary (Limit to 500 characters)
-            resume_summary = extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text
-
-            dashboard_data.append({
-                "resume_id": resume.id,
-                "uploaded_at": resume.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "score": score,
-                "suggestions": suggestions,
-                "job_matches": job_matches,
-                "resume_skills": resume_skills,
-                "missing_skills": missing_skills,
-                "resume_summary": resume_summary
-            })
-
-        except Exception as e:
-            logger.error(f"Error processing Resume ID {resume.id}: {e}", exc_info=True)
-            continue  # Skip this resume instead of failing the entire response
-
     return {
-        "dashboard": dashboard_data,
-        "total_resumes": len(dashboard_data),
-        "message": "Dashboard fetched successfully" if dashboard_data else "No resumes processed"
+        "dashboard": {
+            "total_resumes": dashboard.total_resumes,
+            "latest_resume_id": dashboard.latest_resume_id,
+            "best_resume_id": dashboard.best_resume_id,
+            "resume_score": dashboard.resume_score,
+            "average_resume_score": dashboard.average_resume_score,
+            "total_jobs_applied": dashboard.total_jobs_applied,
+            "job_application_status": dashboard.job_application_status,
+            "job_matches": dashboard.job_matches,
+            "total_job_matches": dashboard.total_job_matches,
+            "missing_skills": dashboard.missing_skills,
+            "skills_analysis": dashboard.skills_analysis,
+            "last_updated": dashboard.last_updated.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        "message": "Dashboard fetched successfully"
     }
+
+# -----------------------------------------------
+# 📌 Update Dashboard After Resume Upload or Job Application
+# -----------------------------------------------
+@router.put("/dashboard/update")
+async def update_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update dashboard data when a user uploads a resume or applies for a job."""
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized user")
+
+    # Fetch existing dashboard
+    dashboard = db.query(Dashboard).filter(Dashboard.user_id == current_user.id).first()
+
+    # Fetch user-related resume data
+    total_resumes = db.query(Resume).filter(Resume.user_id == current_user.id).count()
+    latest_resume = db.query(Resume).filter(Resume.user_id == current_user.id).order_by(Resume.created_at.desc()).first()
+    best_resume = db.query(Resume).filter(Resume.user_id == current_user.id).order_by(Resume.score.desc()).first()
+
+    # Fetch job application data
+    total_jobs_applied = db.query(JobApplication).filter(JobApplication.user_id == current_user.id).count()
+    job_statuses = db.query(JobApplication.status, func.count()).filter(JobApplication.user_id == current_user.id).group_by(JobApplication.status).all()
+    job_application_status = {status: count for status, count in job_statuses}
+
+    # Ensure default values for job application status
+    default_statuses = {"Applied": 0, "Interview": 0, "Rejected": 0, "Hired": 0}
+    job_application_status = {**default_statuses, **job_application_status}
+
+    if not dashboard:
+        # Create a new dashboard entry if it doesn't exist
+        dashboard = Dashboard(
+            user_id=current_user.id,
+            total_resumes=total_resumes,
+            latest_resume_id=latest_resume.id if latest_resume else None,
+            best_resume_id=best_resume.id if best_resume else None,
+            resume_score=latest_resume.score if latest_resume else 0,
+            average_resume_score=db.query(func.avg(Resume.score)).filter(Resume.user_id == current_user.id).scalar() or 0,
+            total_jobs_applied=total_jobs_applied,
+            job_application_status=job_application_status,
+            job_matches=[],
+            total_job_matches=0,
+            missing_skills=[],
+            skills_analysis={},
+            last_updated=datetime.utcnow()
+        )
+        db.add(dashboard)
+    else:
+        # Update existing dashboard
+        dashboard.total_resumes = total_resumes
+        dashboard.latest_resume_id = latest_resume.id if latest_resume else None
+        dashboard.best_resume_id = best_resume.id if best_resume else None
+        dashboard.resume_score = latest_resume.score if latest_resume else 0
+        dashboard.average_resume_score = db.query(func.avg(Resume.score)).filter(Resume.user_id == current_user.id).scalar() or 0
+        dashboard.total_jobs_applied = total_jobs_applied
+        dashboard.job_application_status = job_application_status
+        dashboard.last_updated = datetime.utcnow()
+
+    db.commit()
+
+    return {"message": "Dashboard updated successfully"}
+
+# -----------------------------------------------
+# 📌 Delete Dashboard Data (Optional)
+# -----------------------------------------------
+@router.delete("/dashboard")
+async def delete_dashboard(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete the dashboard data for a user."""
+
+    dashboard = db.query(Dashboard).filter(Dashboard.user_id == current_user.id).first()
+
+    if not dashboard:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+    db.delete(dashboard)
+    db.commit()
+
+    return {"message": "Dashboard deleted successfully"}
