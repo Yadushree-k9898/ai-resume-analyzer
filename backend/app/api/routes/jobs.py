@@ -76,6 +76,7 @@ def get_jobs(query: str, location: str = "", num_pages: int = 1, db: Session = D
     """
     params = {"query": query, "location": location, "num_pages": num_pages}
     job_data = fetch_jobs_from_api(params)
+    
     if not job_data["success"]:
         raise HTTPException(status_code=500, detail="Failed to fetch jobs from API")
     
@@ -85,6 +86,7 @@ def get_jobs(query: str, location: str = "", num_pages: int = 1, db: Session = D
     for job in jobs:
         # Use the decoded job ID if available; otherwise, use the original job_id.
         external_job_id = job.get("decoded_job_id") or job.get("job_id")
+        
         # Check if a job with this external_id already exists.
         existing_job = db.query(Job).filter(Job.external_id == external_job_id).first()
         if not existing_job:
@@ -93,15 +95,23 @@ def get_jobs(query: str, location: str = "", num_pages: int = 1, db: Session = D
             if not skills:
                 # Use job_title as a fallback for skill extraction.
                 skills = extract_skills(job.get("job_title", ""))
+
+            # Fetch apply link from the API response
+            apply_link = job.get("apply_link") or job.get("job_apply_link") or job.get("url")
+
+            if not apply_link:
+                print(f"Warning: No apply link found for job {external_job_id}")  # Debugging log
+                apply_link = "https://example.com"  # Fallback if API doesn't provide an apply link
+            
             new_job = Job(
-                external_id=external_job_id,  # Store the external job ID here.
+                external_id=external_job_id,  
                 title=job.get("job_title", "Unknown Job"),
                 description=job.get("job_description", "No description provided"),
                 skills_required=skills,
                 company_name=job.get("employer_name", "Unknown Company"),
-                # Use "job_location" if provided; otherwise default.
                 location=job.get("job_location", "Not specified"),
                 job_type=job.get("job_employment_type", "Unknown"),
+                apply_link=apply_link,  # ✅ Store apply link
             )
             db.add(new_job)
             stored_jobs.append(new_job)

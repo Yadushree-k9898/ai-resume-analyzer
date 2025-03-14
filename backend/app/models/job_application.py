@@ -10,6 +10,5 @@ class JobApplication(Base):
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     status = Column(String, default="pending")  # e.g., pending, accepted, rejected
     applied_at = Column(DateTime(timezone=True), server_default=func.now())
-
     user = relationship("User", back_populates="job_applications")
     job = relationship("Job")
