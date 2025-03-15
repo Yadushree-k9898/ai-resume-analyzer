@@ -6,7 +6,7 @@ import re
 nlp = spacy.load("en_core_web_sm")
 
 def analyze_resume_quality(text: str):
-    """Analyze resume quality based on structure, clarity, keyword density, and ATS-like requirements."""
+    """Analyze resume quality with a more lenient scoring system."""
     doc = nlp(text)
 
     # Check for key resume sections
@@ -25,10 +25,9 @@ def analyze_resume_quality(text: str):
     job_keywords = ["python", "javascript", "react", "machine learning", "data analysis", "project management", "developer", "java", "sql", "css", "html", "agile", "scrum", "devops"]
     keyword_density = sum(text.lower().count(keyword) for keyword in job_keywords)
 
-    # Score calculation
+    # Score calculation (Lenient Approach)
     score = 0
-    # Check presence of key sections and assign points
-    score += 20 if has_experience else 0
+    score += 25 if has_experience else 0  # Increased points for experience
     score += 20 if has_education else 0
     score += 15 if has_skills else 0
     score += 10 if has_certifications else 0
@@ -36,85 +35,75 @@ def analyze_resume_quality(text: str):
     score += 10 if has_objective else 0
     score += 5 if has_summary else 0
 
-    # Add readability score: Positive readability contributes to score
-    score += int(readability * 10)  # Convert polarity to score (max 10 points)
+    # Add readability score
+    score += int(readability * 10)
 
-    # Keyword density - Assign points for each keyword found in the resume
-    score += min(10, keyword_density * 2)  # Penalize if no keywords are found
+    # Increase keyword impact
+    score += min(15, keyword_density * 3)
 
-    # If missing any section, subtract points
+    # Reduced Penalties for Missing Sections
     if not has_experience:
-        score -= 15
-    if not has_education:
-        score -= 15
-    if not has_skills:
         score -= 10
+    if not has_education:
+        score -= 10
+    if not has_skills:
+        score -= 5
     if not has_certifications:
-        score -= 5
+        score -= 3
     if not has_contact_info:
-        score -= 5
+        score -= 3
     if not has_objective:
-        score -= 5
+        score -= 3
     if not has_summary:
-        score -= 5
+        score -= 3
 
-    # Score penalty for grammar issues (using textblob)
+    # Less Strict Grammar Penalty
     grammar_score = analyze_grammar(text)
-    score -= grammar_score  # Subtract grammar issues score (0-10)
+    score -= min(5, grammar_score)  # Max penalty reduced to 5
 
-    # ATS-friendly formatting: Check for excessive use of non-standard fonts, symbols, etc.
+    # ATS Friendliness Adjustments
     ats_score = check_ats_friendly(text)
-    score += ats_score  # Penalty or bonus based on ATS-friendly formatting
+    score += ats_score  # Still consider formatting issues, but less harshly
 
-    # Ensure the score doesn't exceed 100 or fall below 0
+    # Ensure the score remains within 0-100
     score = max(0, min(score, 100))
 
-    # Define suggestions based on the score
+    # Define more lenient suggestions
     suggestions = []
-    if score < 50:
-        suggestions.append("Resume is missing key sections or has many issues. Consider major improvements.")
-        suggestions.append("Ensure your resume includes all essential sections: Experience, Education, Skills, and Contact Info.")
-        suggestions.append("Focus on making your content concise and easy to read. Avoid passive voice and overly complex sentences.")
-        suggestions.append("Grammar, sentence structure, and readability need significant improvements.")
-    elif score < 70:
-        suggestions.append("Resume lacks important sections or has grammar issues. Consider revising your work experience and education sections.")
-        suggestions.append("Improve keyword usage to match job descriptions. Focus on including specific job-related skills.")
-        suggestions.append("Make sure your resume is formatted correctly and doesn't include any non-ATS-friendly elements.")
-    elif score < 90:
-        suggestions.append("Resume is decent but could be optimized further. Ensure proper grammar, structure, and job-specific keywords.")
-        suggestions.append("Make sure your resume is ATS-friendly and easy to scan, with no unnecessary formatting elements.")
-        suggestions.append("Consider adding a summary or objective statement to highlight your career goals.")
+    if score < 60:
+        suggestions.append("Resume could be improved. Ensure key sections like Work Experience and Skills are well-detailed.")
+        suggestions.append("Enhance keyword usage to better match job descriptions.")
+        suggestions.append("Ensure correct formatting and ATS-friendly structure.")
+    elif score < 80:
+        suggestions.append("Resume is fairly strong but could benefit from slight improvements in clarity, keywords, and formatting.")
+        suggestions.append("Make sure your grammar and sentence structure are clear.")
     else:
-        suggestions.append("Resume is well-optimized and ATS-friendly!")
-        suggestions.append("Great job! Keep the content concise, keyword-optimized, and well-structured.")
-        suggestions.append("Focus on maintaining the balance between a well-written resume and ATS compatibility.")
+        suggestions.append("Your resume is well-structured and optimized! Keep refining it for even better results.")
 
     if grammar_score > 0:
-        suggestions.append("Consider improving grammar and sentence structure. Avoid excessive use of passive voice and wordiness.")
+        suggestions.append("Consider minor grammar refinements for better readability.")
     
     if ats_score < 0:
-        suggestions.append("Avoid using excessive symbols, graphics, or non-standard fonts that could confuse an ATS system.")
+        suggestions.append("Avoid excessive symbols or graphics that could impact ATS scanning.")
 
     return {"resume_score": score, "suggestions": suggestions}
 
+
 def analyze_grammar(text: str):
-    """Simple grammar check using TextBlob: penalize for sentence structure issues."""
+    """Less strict grammar check using TextBlob."""
     blob = TextBlob(text)
-    grammar_issues = sum(1 for sentence in blob.sentences if len(sentence.words) < 4 or sentence.sentiment.polarity < 0.2)
-    # Penalize 2 points for each sentence with issues
-    return min(10, grammar_issues * 2)
+    grammar_issues = sum(1 for sentence in blob.sentences if len(sentence.words) < 4 or sentence.sentiment.polarity < 0.1)
+    return min(5, grammar_issues)  # Max penalty reduced to 5
+
 
 def check_ats_friendly(text: str):
-    """Check if resume is ATS-friendly (e.g., no excessive symbols, headers, or graphics)."""
-    # ATS may have issues with special characters, fonts, or formatting
-    special_characters = re.findall(r'[^a-zA-Z0-9\s,.\-]', text)
+    """Lenient ATS-friendly check."""
+    special_characters = re.findall(r'[^a-zA-Z0-9\s,.-]', text)
     
-    if len(special_characters) > 5:  # Arbitrary threshold for special characters
-        return -10  # Significant penalty for bad formatting
-
-    # Check for any non-standard sections like headers, non-ATS-friendly fonts
+    if len(special_characters) > 8:
+        return -5  # Reduced penalty
+    
     if any(word in text.lower() for word in ["graphics", "image", "logo"]):
-        return -10  # Penalty for non-ATS-friendly elements
-
+        return -5  # Less strict ATS penalty
+    
     return 5  # Small bonus for ATS-friendly formatting
-
