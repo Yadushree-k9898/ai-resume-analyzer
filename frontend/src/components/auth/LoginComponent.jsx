@@ -23,17 +23,20 @@ const LoginComponent = () => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
+  
     try {
-      const response = await fetch(`${API_URL}/login/`, {
+      const response = await fetch(`${API_URL}/auth/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-
+  
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail);
-
+  
+      // Log the success message
+      console.log("Login successful!");
+  
       localStorage.setItem("token", data.token);
       navigate("/dashboard");
     } catch (err) {
@@ -42,6 +45,7 @@ const LoginComponent = () => {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4">

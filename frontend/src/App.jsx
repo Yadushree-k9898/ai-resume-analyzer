@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/common/Navbar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Dashboard from "./components/dashboard/DashboardStats";
 
 const App = () => {
   return (
@@ -12,6 +13,7 @@ const App = () => {
     
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<Dashboard />} />
        
       </Routes>
     </Router>

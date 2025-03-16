@@ -132,7 +132,6 @@
 // export default SignupComponent;
 
 
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -168,7 +167,7 @@ const SignupComponent = () => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
+  
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/auth/register/`,
@@ -183,10 +182,16 @@ const SignupComponent = () => {
           }),
         }
       );
-
+  
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Unknown error");
-
+      console.log('Server response:', data); // Log response to inspect the error message
+  
+      if (!response.ok) {
+        // Log the full error detail
+        console.log('Validation errors:', data.detail);
+        throw new Error(data.detail?.map(error => error.msg).join(', ') || 'Unknown error');
+      }
+  
       navigate("/login", {
         state: { message: "Account created successfully! Please log in." },
       });
@@ -196,6 +201,7 @@ const SignupComponent = () => {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4">
