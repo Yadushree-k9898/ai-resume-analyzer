@@ -1,39 +1,43 @@
-import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Provider } from "react-redux";
+import store from "./redux/store";
 import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Dashboard from "./components/dashboard/DashboardStats";
+import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
+import NotFound from "./pages/NotFound";
+import JobRecommendations from "./pages/JobRecommendations";
+import Profile from "./pages/Profile";
+import ResumeAnalysis from "./pages/ResumeAnalysis";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
     children: [
-      {
-        index: true,
-        element: <Home />
-      },
-      {
-        path: "dashboard",
-        element: <Dashboard />
-      }
-    ]
+      { index: true, element: <Home /> },
+      { path: "dashboard", element: <Dashboard /> },
+      { path: "profile", element: <Profile /> },
+      { path: "job-recommendations", element: <JobRecommendations /> },
+      { path: "resume-analysis", element: <ResumeAnalysis /> },
+      { path: "*", element: <NotFound /> },
+    ],
   },
-  // Auth routes without the standard layout
-  {
-    path: "/login",
-    element: <Login />
-  },
-  {
-    path: "/signup",
-    element: <Signup />
-  }
+  { path: "/login", element: <Login /> },
+  { path: "/signup", element: <Signup /> },
+  { path: "*", element: <NotFound /> },
 ]);
 
 const App = () => {
-  return <RouterProvider router={router} />;
+  return (
+    <Provider store={store}>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </Provider>
+  );
 };
 
 export default App;

@@ -1,4 +1,3 @@
-// Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +18,26 @@ const LoginComponent = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    const { email, password } = formData;
+    // Basic validation: ensure both fields are not empty and email is valid
+    if (!email || !password) return false;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return false;
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-  
+
+    if (!validateForm()) {
+      setError("Please provide a valid email and password.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       console.log("API_URL:", API_URL); // Debug API URL
       const response = await fetch(`${API_URL}/auth/login/`, {
@@ -31,16 +45,16 @@ const LoginComponent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-  
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Login failed");
-  
+
       console.log("Login successful!", data); // Debug response data
-  
+
       // Use correct key for token
       localStorage.setItem("token", data.access_token);
       console.log("Token saved:", localStorage.getItem("token"));
-  
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err.message); // Debug errors
@@ -49,7 +63,6 @@ const LoginComponent = () => {
       setIsLoading(false);
     }
   };
-  
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4">

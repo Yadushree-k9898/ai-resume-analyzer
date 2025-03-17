@@ -1,6 +1,13 @@
 // import { useState } from "react";
 // import { useNavigate } from "react-router-dom";
-// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+// import {
+//   Card,
+//   CardContent,
+//   CardDescription,
+//   CardFooter,
+//   CardHeader,
+//   CardTitle,
+// } from "@/components/ui/card";
 // import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
 // import { Label } from "@/components/ui/label";
@@ -19,7 +26,7 @@
 //   const [isLoading, setIsLoading] = useState(false);
 
 //   const handleChange = (e) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
+//     setFormData({ ...formData, [e.target.name]: e.target.value.trim() });
 //   };
 
 //   const handleSignup = async (e) => {
@@ -28,16 +35,26 @@
 //     setIsLoading(true);
 
 //     try {
-//       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register/`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(formData),
-//       });
+//       const response = await fetch(
+//         `${import.meta.env.VITE_API_URL}/auth/register/`,
+//         {
+//           method: "POST",
+//           headers: { "Content-Type": "application/json" },
+//           body: JSON.stringify(formData),
+//         }
+//       );
 
 //       const data = await response.json();
-//       if (!response.ok) throw new Error(data.detail);
 
-//       navigate("/login", { state: { message: "Account created successfully! Please log in." } });
+//       if (!response.ok) {
+//         throw new Error(
+//           data.detail?.map((error) => error.msg).join(", ") || "Signup failed"
+//         );
+//       }
+
+//       navigate("/login", {
+//         state: { message: "Account created successfully! Please log in." },
+//       });
 //     } catch (err) {
 //       setError(err.message);
 //     } finally {
@@ -45,13 +62,19 @@
 //     }
 //   };
 
+//   const isFormValid = Object.values(formData).every(
+//     (value) => value.trim() !== "" || value === formData.phone_number
+//   );
+
 //   return (
 //     <div className="flex justify-center items-center min-h-screen bg-background p-4">
 //       <Card className="w-full max-w-md shadow-lg border-border">
 //         <CardHeader className="space-y-1">
-//           <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
+//           <CardTitle className="text-2xl font-bold text-center">
+//             Create an account
+//           </CardTitle>
 //           <CardDescription className="text-center">
-//             Enter your information to get started
+//             Enter your details to get started
 //           </CardDescription>
 //         </CardHeader>
 //         <CardContent>
@@ -65,7 +88,6 @@
 //                 placeholder="John Doe"
 //                 onChange={handleChange}
 //                 required
-//                 className="bg-background"
 //               />
 //             </div>
 //             <div className="space-y-2">
@@ -77,7 +99,6 @@
 //                 placeholder="name@example.com"
 //                 onChange={handleChange}
 //                 required
-//                 className="bg-background"
 //               />
 //             </div>
 //             <div className="space-y-2">
@@ -89,29 +110,31 @@
 //                 placeholder="••••••••"
 //                 onChange={handleChange}
 //                 required
-//                 className="bg-background"
 //               />
 //             </div>
 //             <div className="space-y-2">
-//               <Label htmlFor="phone_number">Phone Number</Label>
+//               <Label htmlFor="phone_number">Phone Number (Optional)</Label>
 //               <Input
 //                 id="phone_number"
 //                 type="text"
 //                 name="phone_number"
 //                 placeholder="+1 (555) 123-4567"
 //                 onChange={handleChange}
-//                 className="bg-background"
 //               />
 //             </div>
 
 //             {error && (
-//               <Alert variant="destructive" className="border-destructive/50 text-destructive dark:border-destructive dark:text-destructive">
+//               <Alert variant="destructive">
 //                 <ExclamationTriangleIcon className="h-4 w-4" />
 //                 <AlertDescription>{error}</AlertDescription>
 //               </Alert>
 //             )}
 
-//             <Button type="submit" className="w-full" disabled={isLoading}>
+//             <Button
+//               type="submit"
+//               className="w-full bg-primary hover:bg-primary/90 text-white"
+//               disabled={isLoading || !isFormValid}
+//             >
 //               {isLoading ? "Creating account..." : "Create account"}
 //             </Button>
 //           </form>
@@ -119,7 +142,11 @@
 //         <CardFooter className="flex flex-col space-y-4 mt-2">
 //           <div className="text-sm text-center text-muted-foreground">
 //             Already have an account?{" "}
-//             <Button variant="link" className="p-0 h-auto font-normal" onClick={() => navigate("/login")}>
+//             <Button
+//               variant="link"
+//               className="p-0 h-auto font-normal text-primary hover:text-primary/80"
+//               onClick={() => navigate("/login")}
+//             >
 //               Sign in
 //             </Button>
 //           </div>
@@ -132,8 +159,10 @@
 // export default SignupComponent;
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { signupUserThunk, clearError } from "@/redux/slices/authSlice";
 import {
   Card,
   CardContent,
@@ -150,58 +179,46 @@ import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 
 const SignupComponent = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isLoading, error } = useSelector((state) => state.auth);
+
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     password: "",
     phone_number: "",
   });
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Clear error message when the component mounts
+  useEffect(() => {
+    dispatch(clearError());
+    return () => {
+      dispatch(clearError()); // Cleanup on unmount
+    };
+  }, [dispatch]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Trim value for all fields except phone_number
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.name === "phone_number" ? e.target.value : e.target.value.trim(),
+    });
   };
 
-  const handleSignup = async (e) => {
+  const handleSignup = (e) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-  
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/register/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            full_name: formData.full_name.trim(),
-            email: formData.email.trim(),
-            password: formData.password,
-            phone_number: formData.phone_number.trim() || null,
-          }),
-        }
-      );
-  
-      const data = await response.json();
-      console.log('Server response:', data); // Log response to inspect the error message
-  
-      if (!response.ok) {
-        // Log the full error detail
-        console.log('Validation errors:', data.detail);
-        throw new Error(data.detail?.map(error => error.msg).join(', ') || 'Unknown error');
+    dispatch(signupUserThunk(formData)).then((action) => {
+      if (signupUserThunk.fulfilled.match(action)) {
+        navigate("/login", {
+          state: { message: "Account created successfully! Please log in." },
+        });
       }
-  
-      navigate("/login", {
-        state: { message: "Account created successfully! Please log in." },
-      });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
-  
+
+  const isFormValid = Object.values(formData).every(
+    (value) => value.trim() !== "" || value === formData.phone_number
+  );
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-background p-4">
@@ -211,7 +228,7 @@ const SignupComponent = () => {
             Create an account
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your information to get started
+            Enter your details to get started
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,7 +242,6 @@ const SignupComponent = () => {
                 placeholder="John Doe"
                 onChange={handleChange}
                 required
-                className="bg-background"
               />
             </div>
             <div className="space-y-2">
@@ -237,7 +253,6 @@ const SignupComponent = () => {
                 placeholder="name@example.com"
                 onChange={handleChange}
                 required
-                className="bg-background"
               />
             </div>
             <div className="space-y-2">
@@ -249,7 +264,6 @@ const SignupComponent = () => {
                 placeholder="••••••••"
                 onChange={handleChange}
                 required
-                className="bg-background"
               />
             </div>
             <div className="space-y-2">
@@ -260,15 +274,11 @@ const SignupComponent = () => {
                 name="phone_number"
                 placeholder="+1 (555) 123-4567"
                 onChange={handleChange}
-                className="bg-background"
               />
             </div>
 
             {error && (
-              <Alert
-                variant="destructive"
-                className="border-destructive/50 text-destructive dark:border-destructive dark:text-destructive"
-              >
+              <Alert variant="destructive">
                 <ExclamationTriangleIcon className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -277,7 +287,7 @@ const SignupComponent = () => {
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-white"
-              disabled={isLoading}
+              disabled={isLoading || !isFormValid}
             >
               {isLoading ? "Creating account..." : "Create account"}
             </Button>
@@ -301,3 +311,4 @@ const SignupComponent = () => {
 };
 
 export default SignupComponent;
+
