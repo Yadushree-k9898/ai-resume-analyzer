@@ -1,23 +1,39 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/common/Navbar";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import MainLayout from "./layout/MainLayout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./components/dashboard/DashboardStats";
+import Home from "./pages/Home";
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <MainLayout />,
+    children: [
+      {
+        index: true,
+        element: <Home />
+      },
+      {
+        path: "dashboard",
+        element: <Dashboard />
+      }
+    ]
+  },
+  // Auth routes without the standard layout
+  {
+    path: "/login",
+    element: <Login />
+  },
+  {
+    path: "/signup",
+    element: <Signup />
+  }
+]);
 
 const App = () => {
-  return (
-    <Router>
-      <Navbar />
-      <Routes>
-    
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-       
-      </Routes>
-    </Router>
-  );
+  return <RouterProvider router={router} />;
 };
 
 export default App;

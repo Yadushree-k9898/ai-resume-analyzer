@@ -25,6 +25,7 @@ const LoginComponent = () => {
     setIsLoading(true);
   
     try {
+      console.log("API_URL:", API_URL); // Debug API URL
       const response = await fetch(`${API_URL}/auth/login/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,14 +33,17 @@ const LoginComponent = () => {
       });
   
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail);
+      if (!response.ok) throw new Error(data.detail || "Login failed");
   
-      // Log the success message
-      console.log("Login successful!");
+      console.log("Login successful!", data); // Debug response data
   
-      localStorage.setItem("token", data.token);
+      // Use correct key for token
+      localStorage.setItem("token", data.access_token);
+      console.log("Token saved:", localStorage.getItem("token"));
+  
       navigate("/dashboard");
     } catch (err) {
+      console.error("Login error:", err.message); // Debug errors
       setError(err.message);
     } finally {
       setIsLoading(false);
