@@ -8,7 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import JobRecommendations from "./pages/JobRecommendations";
-import Profile from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 import ResumeAnalyzer from "./pages/ResumeAnalysis";
 import { ThemeProvider } from "./context/ThemeContext";
 import JobMatches from "./components/dashboard/JobMatches";
@@ -21,7 +21,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "dashboard", element: <Dashboard /> },
-      { path: "profile", element: <Profile /> },
+      { path: "profile", element: <Profile/> },
+
       { path: "job-recommendations", element: <JobRecommendations /> },
       { path: "job-matches", element: <JobMatches /> },
       { path: "resume-analyzer", element: <ResumeAnalyzer/> },

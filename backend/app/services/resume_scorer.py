@@ -6,7 +6,7 @@ import re
 nlp = spacy.load("en_core_web_sm")
 
 def analyze_resume_quality(text: str):
-    """Analyze resume quality with a more lenient scoring system."""
+    """Analyze resume quality with a well-balanced scoring system."""
     doc = nlp(text)
 
     # Check for key resume sections
@@ -25,7 +25,7 @@ def analyze_resume_quality(text: str):
     job_keywords = ["python", "javascript", "react", "machine learning", "data analysis", "project management", "developer", "java", "sql", "css", "html", "agile", "scrum", "devops"]
     keyword_density = sum(text.lower().count(keyword) for keyword in job_keywords)
 
-    # Score calculation (Lenient Approach)
+    # Score Calculation
     score = 0
     score += 25 if has_experience else 0  # Increased points for experience
     score += 20 if has_education else 0
@@ -57,34 +57,44 @@ def analyze_resume_quality(text: str):
     if not has_summary:
         score -= 3
 
-    # Less Strict Grammar Penalty
+    # Grammar Analysis
     grammar_score = analyze_grammar(text)
     score -= min(5, grammar_score)  # Max penalty reduced to 5
 
     # ATS Friendliness Adjustments
     ats_score = check_ats_friendly(text)
-    score += ats_score  # Still consider formatting issues, but less harshly
+    score += ats_score  
 
     # Ensure the score remains within 0-100
     score = max(0, min(score, 100))
 
-    # Define more lenient suggestions
+    # Define More Comprehensive Suggestions
     suggestions = []
-    if score < 60:
-        suggestions.append("Resume could be improved. Ensure key sections like Work Experience and Skills are well-detailed.")
-        suggestions.append("Enhance keyword usage to better match job descriptions.")
-        suggestions.append("Ensure correct formatting and ATS-friendly structure.")
-    elif score < 80:
-        suggestions.append("Resume is fairly strong but could benefit from slight improvements in clarity, keywords, and formatting.")
-        suggestions.append("Make sure your grammar and sentence structure are clear.")
+
+    if score < 50:
+        suggestions.append("🚀 Major improvements needed! Consider adding **Experience, Education, and Skills** sections.")
+        suggestions.append("📌 Increase job-related **keywords** to align better with ATS scans.")
+        suggestions.append("✅ Make sure your resume follows a **clear structure with proper headings.**")
+        suggestions.append("✍️ Improve sentence clarity and remove unnecessary fluff.")
+    elif score < 70:
+        suggestions.append("🔍 Good, but can be **more optimized.** Add missing sections if any.")
+        suggestions.append("🎯 Ensure **concise bullet points** in the experience section.")
+        suggestions.append("📝 Improve readability—avoid long paragraphs.")
+        suggestions.append("🖋️ Use **consistent font and formatting** for better ATS performance.")
+    elif score < 85:
+        suggestions.append("👌 Well-structured! Minor refinements needed.")
+        suggestions.append("📢 Highlight key **achievements and metrics** in experience (e.g., 'Increased revenue by 20%').")
+        suggestions.append("🔑 Use **strong action verbs** like 'Developed', 'Implemented', 'Led'.")
     else:
-        suggestions.append("Your resume is well-structured and optimized! Keep refining it for even better results.")
+        suggestions.append("🎉 Excellent resume! Fine-tune details for perfection.")
+        suggestions.append("✨ Consider tailoring it slightly for **each job application.**")
+        suggestions.append("📄 Keep it ATS-friendly by avoiding excessive design elements.")
 
     if grammar_score > 0:
-        suggestions.append("Consider minor grammar refinements for better readability.")
-    
+        suggestions.append("✏️ Improve grammar for better clarity.")
+
     if ats_score < 0:
-        suggestions.append("Avoid excessive symbols or graphics that could impact ATS scanning.")
+        suggestions.append("⚠️ Remove unnecessary **graphics, images, or symbols** that may confuse ATS.")
 
     return {"resume_score": score, "suggestions": suggestions}
 

@@ -25,8 +25,8 @@ const ResumeScore = () => {
 
   const handleAnalyze = async () => {
     if (!file) {
-      toast({ title: "No file selected", description: "Please upload a resume first.", variant: "destructive" });
-      return;
+        toast({ title: "No file selected", description: "Please upload a resume first.", variant: "destructive" });
+        return;
     }
 
     const formData = new FormData();
@@ -35,24 +35,25 @@ const ResumeScore = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/analyze", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("http://localhost:8000/scoring/analyze", {
+            method: "POST",
+            body: formData,
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) throw new Error(data.detail || "Failed to analyze resume");
+        if (!response.ok) throw new Error(data.detail || "Failed to analyze resume");
 
-      setScore(data.resume_score);
-      setSuggestions(data.suggestions);
-      toast({ title: "Resume analyzed", description: "Your resume score has been calculated!" });
+        setScore(data.resume_score);
+        setSuggestions(data.suggestions);
+        toast({ title: "Resume analyzed", description: "Your resume score has been calculated!" });
     } catch (error) {
-      toast({ title: "Analysis failed", description: error.message, variant: "destructive" });
+        toast({ title: "Analysis failed", description: error.message, variant: "destructive" });
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
+
 
   return (
     <div className="flex flex-col items-center space-y-4 p-6 border rounded-lg shadow-md">
