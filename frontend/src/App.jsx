@@ -9,10 +9,11 @@ import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import JobRecommendations from "./pages/JobRecommendations";
 import Profile from "./pages/Profile";
-import ResumeAnalyzer from "./pages/ResumeAnalysis";
+
 import { ThemeProvider } from "./context/ThemeContext";
 import JobMatches from "./components/dashboard/JobMatches";
-import ResumeUpload from "./components/resume/ResumeUpload";
+
+import ResumeAnalyzer from "./pages/ResumeAnalyzer";
 
 const router = createBrowserRouter([
   {
@@ -25,8 +26,9 @@ const router = createBrowserRouter([
 
       { path: "job-recommendations", element: <JobRecommendations /> },
       { path: "job-matches", element: <JobMatches /> },
-      { path: "resume-analyzer", element: <ResumeAnalyzer/> },
-      { path: "resume-upload", element: <ResumeUpload/> },
+      { path: "resume-analyser", element: <ResumeAnalyzer/>},
+      
+      
       { path: "*", element: <NotFound /> },
     ],
   },

@@ -3,7 +3,7 @@ import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import auth, resume, scoring, jobs, job_application, dashboard  
+from app.api.routes import auth, resume, skills, scoring, jobs, job_application, dashboard  
 from app.core.database import Base, engine
 
 # ✅ Load environment variables
@@ -24,7 +24,7 @@ app = FastAPI(
 # ✅ Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this later to specific domains for security
+    allow_origins=["http://localhost:5173"],  # Change this later to specific domains for security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +55,7 @@ def startup_event():
 
 # ✅ Register API routers
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(skills.router, prefix="/api", tags=["Skills Analysis"])
 app.include_router(resume.router, prefix="/resumes", tags=["Resume Upload"])
 app.include_router(scoring.router, prefix="/scoring", tags=["Resume Scoring"])
 app.include_router(jobs.router, prefix="/api", tags=["Job Matching"])

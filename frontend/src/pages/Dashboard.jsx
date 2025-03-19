@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState , useEffect} from "react";
 import {
   User,
   Mail,
@@ -43,68 +43,62 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import AppliedJobs from "./AppliedJobs";
+import axios from "axios";
 
-const Profile = () => {
+const Dashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
-  const [profileData, setProfileData] = useState({
-    name: "Alex Johnson",
-    email: "alex.johnson@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    bio: "Senior Software Engineer with 5+ years of experience in full-stack development. Passionate about creating efficient, scalable applications and mentoring junior developers.",
-    joinDate: "January 2022",
-    resumeScore: 85,
-    jobApplications: 12,
-    interviews: 4,
-    skills: [
-      { name: "JavaScript", level: 90 },
-      { name: "React", level: 85 },
-      { name: "Node.js", level: 80 },
-      { name: "TypeScript", level: 75 },
-      { name: "Python", level: 65 },
-    ],
-    education: [
-      {
-        degree: "M.S. Computer Science",
-        institution: "Stanford University",
-        year: "2018-2020",
-      },
-      {
-        degree: "B.S. Computer Engineering",
-        institution: "UC Berkeley",
-        year: "2014-2018",
-      },
-    ],
-    experience: [
-      {
-        title: "Senior Software Engineer",
-        company: "TechCorp Inc.",
-        period: "2020-Present",
-        description:
-          "Lead developer for the company's flagship product. Managed a team of 5 engineers.",
-      },
-      {
-        title: "Software Developer",
-        company: "InnovateTech",
-        period: "2018-2020",
-        description:
-          "Developed and maintained web applications using React and Node.js.",
-      },
-    ],
-    certifications: [
-      {
-        name: "AWS Certified Solutions Architect",
-        issuer: "Amazon Web Services",
-        date: "2021",
-      },
-      {
-        name: "Professional Scrum Master I",
-        issuer: "Scrum.org",
-        date: "2020",
-      },
-    ],
-  });
+  const [dashboardData, setdashboardData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:8000/auth/me/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUserData(response.data);
+      } catch (err) {
+        setError("Failed to fetch user data", err);
+      }
+    };
+
+    const fetchDashboard = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:8000/dashboard", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.data.dashboard) {
+          setdashboardData(response.data.dashboard);
+        } else {
+          setError(response.data.message || "No dashboard data available.");
+        }
+      } catch (err) {
+        setError("Failed to fetch dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+    fetchDashboard();
+  }, []);
+
+  if (loading) return <p className="text-center text-gray-500">Loading...</p>;
+  if (error) return <p className="text-center text-red-500">{error}</p>;
+
+
+
+  // Removed unused variable 'resumeScore'
+
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -117,12 +111,12 @@ const Profile = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProfileData((prev) => ({
+    setdashboardData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
-
+  // const resumeScore = userData?.dashboard?.resume_score ?? 0;
   return (
     <div className="flex justify-center items-center min-h-screen relative overflow-hidden">
       {/* Background gradients */}
@@ -139,7 +133,7 @@ const Profile = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            Profile
+            Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your personal information and career details
@@ -176,19 +170,22 @@ const Profile = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Profile Card */}
+              {/* Dashboard Card */}
               <Card className="md:col-span-1 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md">
                 <CardContent className="p-6 flex flex-col items-center">
                   <div className="relative mb-4">
                     <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full blur-sm opacity-70"></div>
                     <Avatar className="h-24 w-24 border-2 border-white dark:border-gray-800">
                       <AvatarImage
-                        src="/placeholder.svg?height=96&width=96"
-                        alt={profileData.name}
+                        src={
+                          userData?.avatar ||
+                          "/placeholder.svg?height=96&width=96"
+                        }
+                        alt={userData?.name}
                       />
                       <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-xl">
-                        {profileData.name
-                          .split(" ")
+                        {userData?.name
+                          ?.split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
@@ -196,36 +193,36 @@ const Profile = () => {
                   </div>
 
                   <h2 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent mb-1">
-                    {profileData.name}
+                    {userData?.name || "User"}
                   </h2>
 
                   <Badge className="mb-4 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
-                    Senior Software Engineer
+                    {userData?.job_title || "Developer"}
                   </Badge>
 
                   <div className="w-full space-y-3 text-sm">
                     <div className="flex items-center">
                       <Mail className="h-4 w-4 text-indigo-500 mr-2" />
                       <span className="text-muted-foreground">
-                        {profileData.email}
+                        {userData?.email || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <Phone className="h-4 w-4 text-indigo-500 mr-2" />
                       <span className="text-muted-foreground">
-                        {profileData.phone}
+                        {userData?.phone || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 text-indigo-500 mr-2" />
                       <span className="text-muted-foreground">
-                        {profileData.location}
+                        {userData?.location || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 text-indigo-500 mr-2" />
                       <span className="text-muted-foreground">
-                        Member since {profileData.joinDate}
+                        Member since {userData?.joinDate || "N/A"}
                       </span>
                     </div>
                   </div>
@@ -246,12 +243,13 @@ const Profile = () => {
                   {isEditing ? (
                     <Textarea
                       name="bio"
-                      value={profileData.bio}
+                      value={dashboardData.bio}
                       onChange={handleInputChange}
                       className="min-h-[120px] bg-white/70 dark:bg-gray-900/70 border-indigo-200 dark:border-indigo-800 focus:border-indigo-400 focus:ring-indigo-400"
                     />
                   ) : (
-                    <p className="text-muted-foreground">{profileData.bio}</p>
+                    <p>{userData?.bio || "No bio available"}</p>
+
                   )}
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
@@ -276,45 +274,43 @@ const Profile = () => {
                 </CardFooter>
               </Card>
 
-              {/* Stats Cards */}
-              <Card className="md:col-span-1 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md group hover:shadow-lg transition-shadow">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="relative mr-2">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full blur-sm opacity-70"></div>
-                      <div className="relative bg-white dark:bg-gray-900 rounded-full p-1.5">
-                        <FileText className="h-5 w-5 text-transparent bg-gradient-to-br from-violet-500 to-indigo-600 bg-clip-text" />
-                      </div>
-                    </div>
-                    <h3 className="text-lg font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                      Resume Score
-                    </h3>
-                  </div>
-                  <div className="text-center mb-4">
-                    <div className="relative inline-flex items-center justify-center">
-                      <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-indigo-600/20 rounded-full blur-sm"></div>
-                      <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
-                        {profileData.resumeScore}
-                      </div>
-                      <div className="text-lg text-indigo-400 dark:text-indigo-500">
-                        /100
-                      </div>
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 rounded-full blur-sm"></div>
-                    <Progress
-                      value={profileData.resumeScore}
-                      className="h-2 bg-indigo-100 dark:bg-indigo-950/30"
-                      indicatorClassName="bg-gradient-to-r from-violet-500 to-indigo-600"
-                    />
-                  </div>
-                  <p className="text-xs text-center mt-2 text-muted-foreground">
-                    Your resume is performing better than 75% of users
-                  </p>
-                </CardContent>
-              </Card>
+{/* Stats Cards */}
+<Card className="md:col-span-1 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md group hover:shadow-lg transition-shadow">
+  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+  <CardContent className="p-6">
+    <div className="flex items-center mb-4">
+      <div className="relative mr-2">
+        <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full blur-sm opacity-70"></div>
+        <div className="relative bg-white dark:bg-gray-900 rounded-full p-1.5">
+          <FileText className="h-5 w-5 text-transparent bg-gradient-to-br from-violet-500 to-indigo-600 bg-clip-text" />
+        </div>
+      </div>
+      <h3 className="text-lg font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+        Resume Score
+      </h3>
+    </div>
+    <div className="text-center mb-4">
+      <div className="relative inline-flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-indigo-600/20 rounded-full blur-sm"></div>
+        <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">
+          {dashboardData?.resumeScore ?? "--"}
+        </div>
+        <div className="text-lg text-indigo-400 dark:text-indigo-500">/100</div>
+      </div>
+    </div>
+    <div className="relative">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 rounded-full blur-sm"></div>
+      <Progress
+        value={dashboardData?.resumeScore ?? 0}
+        className="h-2 bg-indigo-100 dark:bg-indigo-950/30"
+        indicatorClassName="bg-gradient-to-r from-violet-500 to-indigo-600"
+      />
+    </div>
+    <p className="text-xs text-center mt-2 text-muted-foreground">
+      Your resume is performing better than 75% of users
+    </p>
+  </CardContent>
+</Card>
 
               <Card className="md:col-span-1 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md group hover:shadow-lg transition-shadow">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
@@ -333,7 +329,7 @@ const Profile = () => {
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-2">
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {profileData.jobApplications}
+                        {dashboardData.jobApplications}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Applied
@@ -341,7 +337,7 @@ const Profile = () => {
                     </div>
                     <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-2">
                       <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                        {profileData.interviews}
+                        {dashboardData.interviews}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Interviews
@@ -419,7 +415,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {profileData.skills.map((skill, index) => (
+                  {dashboardData.skills.map((skill, index) => (
                     <div key={index}>
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium">
@@ -458,7 +454,7 @@ const Profile = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {profileData.education.map((edu, index) => (
+                    {dashboardData.education.map((edu, index) => (
                       <div
                         key={index}
                         className="border-l-2 border-indigo-300 dark:border-indigo-700 pl-4 py-1 group hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
@@ -500,7 +496,7 @@ const Profile = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {profileData.experience.map((exp, index) => (
+                    {dashboardData.experience.map((exp, index) => (
                       <div
                         key={index}
                         className="border-l-2 border-blue-300 dark:border-blue-700 pl-4 py-1 group hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
@@ -544,7 +540,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {profileData.certifications.map((cert, index) => (
+                  {dashboardData.certifications.map((cert, index) => (
                     <div
                       key={index}
                       className="bg-amber-50/50 dark:bg-amber-950/10 rounded-lg p-4 border border-amber-200/50 dark:border-amber-800/30 group hover:border-amber-300 dark:hover:border-amber-700 transition-colors"
@@ -610,43 +606,40 @@ const Profile = () => {
             </div>
           </TabsContent>
 
-       
-
-<TabsContent value="applications" className="space-y-6">
-  <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md">
-    <CardHeader>
-      <CardTitle className="flex items-center">
-        <Briefcase className="h-5 w-5 text-blue-500 mr-2" />
-        <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-          Job Applications
-        </span>
-      </CardTitle>
-      <CardDescription>
-        Track your recent job applications and their status
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <AppliedJobs /> {/* ✅ Render the AppliedJobs component here */}
-    </CardContent>
-    <CardFooter className="flex justify-between">
-      <Button
-        variant="outline"
-        className="border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50"
-      >
-        <Briefcase className="h-4 w-4 mr-2" />
-        View All Applications
-      </Button>
-      <Button
-        className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-        onClick={() => navigate("/job-matches")}
-      >
-        <Sparkles className="h-4 w-4 mr-2" />
-        Find Jobs
-      </Button>
-    </CardFooter>
-  </Card>
-</TabsContent>
-
+          <TabsContent value="applications" className="space-y-6">
+            <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Briefcase className="h-5 w-5 text-blue-500 mr-2" />
+                  <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                    Job Applications
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  Track your recent job applications and their status
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AppliedJobs /> {/* ✅ Render the AppliedJobs component here */}
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  variant="outline"
+                  className="border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  View All Applications
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                  onClick={() => navigate("/job-matches")}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Find Jobs
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
             <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-indigo-100/30 dark:border-indigo-800/30 shadow-md">
@@ -664,7 +657,7 @@ const Profile = () => {
                   <Input
                     id="name"
                     name="name"
-                    value={profileData.name}
+                    value={dashboardData.name}
                     onChange={handleInputChange}
                     className="bg-white/70 dark:bg-gray-900/70 border-indigo-200 dark:border-indigo-800 focus:border-indigo-400 focus:ring-indigo-400"
                   />
@@ -675,7 +668,7 @@ const Profile = () => {
                     id="email"
                     name="email"
                     type="email"
-                    value={profileData.email}
+                    value={dashboardData.email}
                     onChange={handleInputChange}
                     className="bg-white/70 dark:bg-gray-900/70 border-indigo-200 dark:border-indigo-800 focus:border-indigo-400 focus:ring-indigo-400"
                   />
@@ -685,7 +678,7 @@ const Profile = () => {
                   <Input
                     id="phone"
                     name="phone"
-                    value={profileData.phone}
+                    value={dashboardData.phone}
                     onChange={handleInputChange}
                     className="bg-white/70 dark:bg-gray-900/70 border-indigo-200 dark:border-indigo-800 focus:border-indigo-400 focus:ring-indigo-400"
                   />
@@ -695,7 +688,7 @@ const Profile = () => {
                   <Input
                     id="location"
                     name="location"
-                    value={profileData.location}
+                    value={dashboardData.location}
                     onChange={handleInputChange}
                     className="bg-white/70 dark:bg-gray-900/70 border-indigo-200 dark:border-indigo-800 focus:border-indigo-400 focus:ring-indigo-400"
                   />
@@ -730,9 +723,9 @@ const Profile = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">Profile Visibility</Label>
+                    <Label className="text-base">Dashboard Visibility</Label>
                     <p className="text-sm text-muted-foreground">
-                      Allow recruiters to view your profile
+                      Allow recruiters to view your Dashboard
                     </p>
                   </div>
                   <Switch defaultChecked />
@@ -774,7 +767,7 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Dashboard;
 
 /**
  * Custom Progress component with gradient support

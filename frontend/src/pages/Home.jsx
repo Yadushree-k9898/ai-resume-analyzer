@@ -311,32 +311,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="relative flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-indigo-100 dark:border-indigo-900">
-        <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/50 to-white/0 dark:from-indigo-950/50 dark:to-background/0"></div>
-        <p className="text-xs text-muted-foreground relative z-10">© 2025 AnalyseAI. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6 relative z-10">
-          <a
-            className="text-xs hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline underline-offset-4 transition-colors"
-            href="#"
-          >
-            Terms of Service
-          </a>
-          <a
-            className="text-xs hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline underline-offset-4 transition-colors"
-            href="#"
-          >
-            Privacy
-          </a>
-          <a
-            className="text-xs hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline underline-offset-4 transition-colors"
-            href="#"
-          >
-            Contact
-          </a>
-        </nav>
-      </footer>
     </div>
   )
 }
